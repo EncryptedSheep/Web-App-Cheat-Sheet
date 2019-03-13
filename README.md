@@ -121,8 +121,6 @@
 * MySQL
 	- `SELECT column_name FROM information_schema.columns WHERE table_name='foo'`
 
-	From “The Web Application Hacker’s Handbook”
-
 ## Methodology
 From "The Web Application Hacker's Handboook"
 1. Map the Application’s Content
