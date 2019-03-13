@@ -3,6 +3,7 @@
 * [The Web Application Hacker’s Handbook](https://repo.zenk-security.com/Magazine%20E-book/The%20web%20application%20hackers%20handbook%20finding%20and%20exploiting%20security%20flaws%20-ed2%202011.pdf)
 * [OWASP Top 10 – 2017](https://www.owasp.org/images/7/72/OWASP_Top_10-2017_%28en%29.pdf.pdf)
 * [PayloadsAllTheThings](https://github.com/swisskyrepo/PayloadsAllTheThings)
+* [PortSwigger - Vulnerability Descriptions & Remdiations](https://portswigger.net/kb/issues)
 
 ## Tools
 * [URL Encoder/Decoder](https://meyerweb.com/eric/tools/dencoder/)
