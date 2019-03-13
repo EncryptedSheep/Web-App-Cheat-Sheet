@@ -1,0 +1,1 @@
+asp,aspx,bak,bat,c,cs,cfm,cgi,com,dll,exe,htm,html,inc,java,jhtml,jsa,jsp,log,mdb,old,nsf,php,phtml,pl,reg,sh,shtml,sql,src,tmp,txt,xml
